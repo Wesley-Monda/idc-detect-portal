@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.DS_Store
+*.db
+*.sqlite
+*.sqlite3
+breast_idc_resnet50_best_state_dict.pth
+static/uploads/*
+.vercel/
+npm-debug.log

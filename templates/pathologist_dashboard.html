@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white">Pathologist Dashboard</h1>
+        <p class="text-gray-400">Review cases, manage patient data, and monitor analytics</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- Total Cases -->
+        <div class="glass-card p-6 rounded-xl flex items-center justify-between border-l-4 border-blue-500">
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider mb-1">Total Cases</div>
+                <div class="text-3xl font-bold text-white">{{ predictions|length }}</div>
+            </div>
+            <div class="p-3 bg-blue-500/20 rounded-lg text-blue-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.707l5.414 5.414a1 1 0 01.707.707V19a2 2 0 01-2 2z">
+                    </path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Pending -->
+        <div class="glass-card p-6 rounded-xl flex items-center justify-between border-l-4 border-orange-500">
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider mb-1">Pending Review</div>
+                <div class="text-3xl font-bold text-orange-400">{{ predictions|selectattr("status", "equalto",
+                    "pending")|list|length }}</div>
+            </div>
+            <div class="p-3 bg-orange-500/20 rounded-lg text-orange-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Positive -->
+        <div class="glass-card p-6 rounded-xl flex items-center justify-between border-l-4 border-rose-500">
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider mb-1">Positive Cases</div>
+                <div class="text-3xl font-bold text-rose-400">{{ predictions|selectattr("result_class", "equalto",
+                    1)|list|length }}</div>
+            </div>
+            <div class="p-3 bg-rose-500/20 rounded-lg text-rose-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Negative -->
+        <div class="glass-card p-6 rounded-xl flex items-center justify-between border-l-4 border-emerald-500">
+            <div>
+                <div class="text-gray-400 text-xs uppercase tracking-wider mb-1">Negative Cases</div>
+                <div class="text-3xl font-bold text-emerald-400">{{ predictions|selectattr("result_class", "equalto",
+                    0)|list|length }}</div>
+            </div>
+            <div class="p-3 bg-emerald-500/20 rounded-lg text-emerald-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Chart -->
+        <div class="lg:col-span-2 glass-card p-8 rounded-xl">
+            <h3 class="text-xl font-bold text-white mb-6">Case Distribution</h3>
+            <div class="relative h-64 w-full flex items-center justify-center">
+                <canvas id="distributionChart"></canvas>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-8">
+                <div class="bg-rose-500/10 p-4 rounded-lg text-center border border-rose-500/20">
+                    <div class="text-2xl font-bold text-rose-400">
+                        {% if predictions %}
+                        {{ ((predictions|selectattr("result_class", "equalto", 1)|list|length / predictions|length *
+                        100)|round)|int }}%
+                        {% else %}0%{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-400 uppercase">Positive IDC</div>
+                </div>
+                <div class="bg-emerald-500/10 p-4 rounded-lg text-center border border-emerald-500/20">
+                    <div class="text-2xl font-bold text-emerald-400">
+                        {% if predictions %}
+                        {{ ((predictions|selectattr("result_class", "equalto", 0)|list|length / predictions|length *
+                        100)|round)|int }}%
+                        {% else %}0%{% endif %}
+                    </div>
+                    <div class="text-xs text-gray-400 uppercase">Negative IDC</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar / Actions -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-lg font-bold text-white mb-4">Quick Actions</h3>
+                <div class="space-y-3">
+                    <a href="/pathologist/cases"
+                        class="block w-full text-left px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg transition flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                            </path>
+                        </svg>
+                        <span class="font-bold">Review Pending Cases</span>
+                    </a>
+                    <a href="/pathologist/cases"
+                        class="block w-full text-left px-4 py-3 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg border border-white/5 transition flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        <span>View All Categories</span>
+                    </a>
+                    <a href="/pathologist/export" target="_blank"
+                        class="block w-full text-left px-4 py-3 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg border border-white/5 transition flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.707l5.414 5.414a1 1 0 01.707.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                        <span>Export Analytics Report</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Model Info -->
+            <div class="glass-card p-6 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <h3 class="text-sm font-bold text-blue-300 mb-3 uppercase tracking-wider">Model Information</h3>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                        AI Model: <span class="text-gray-200">ResNet50 (PyTorch)</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                        Training Accuracy: <span class="text-gray-200">94.3%</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                        Last Updated: <span class="text-gray-200">Jan 2025</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Chart Configuration
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+    const positiveCount = {{ predictions| selectattr("result_class", "equalto", 1) | list | length }};
+    const negativeCount = {{ predictions| selectattr("result_class", "equalto", 0) | list | length }};
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['IDC Positive', 'Negative'],
+            datasets: [{
+                data: [positiveCount, negativeCount],
+                backgroundColor: [
+                    'rgba(244, 63, 94, 0.8)', // Rose 500
+                    'rgba(16, 185, 129, 0.8)'  // Emerald 500
+                ],
+                borderColor: [
+                    'rgba(244, 63, 94, 1)',
+                    'rgba(16, 185, 129, 1)'
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false // We use custom legends
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    displayColors: true
+                }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Handle Resize for Chart responsiveness if needed (ChartJS default usually works)
+</script>
+{% endblock %}
