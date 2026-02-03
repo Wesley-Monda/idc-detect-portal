@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, status, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -46,11 +47,22 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
+    print(f"DEBUG: Login attempt for user: {username}")
     user = db.query(models.User).filter(models.User.username == username).first()
-    if not user or not auth.verify_password(password, user.hashed_password):
+    
+    if not user:
+        print(f"DEBUG: User {username} NOT found in DB")
+        # Check total users to debug persistence issues
+        total_users = db.query(models.User).count()
+        print(f"DEBUG: Total users in DB: {total_users}")
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+        
+    if not auth.verify_password(password, user.hashed_password):
+        print(f"DEBUG: Password verification FAILED for {username}")
         return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
     
     access_token = auth.create_access_token(data={"sub": user.username, "role": user.role})
+    print(f"DEBUG: Token generated for {username}: {auth.mask_value(access_token)}")
     
     # Check if client wants JSON (API/Swagger) or HTML (Browser)
     accept = request.headers.get("accept", "")
@@ -65,15 +77,18 @@ async def login(
     target_role = user.role.lower()
     response = RedirectResponse(url=f"/{target_role}/dashboard", status_code=status.HTTP_302_FOUND)
     
-    # Set explicit cookie for browser (Raw token, HttpOnly for security)
+    # Set explicit cookie for browser (Vercel/Production friendly)
+    is_prod = os.getenv("VERCEL") == "1"
     response.set_cookie(
         key="access_token", 
-        value=access_token, # Raw JWT, no "Bearer " prefix in cookie to simplify parsing
-        httponly=True,      # Prevent JS access (XSS protection)
-        secure=False,       # Localhost (False)
-        samesite="lax"
+        value=access_token, 
+        httponly=True,
+        secure=is_prod, # MUST be True for HTTPS on Vercel
+        samesite="lax",
+        path="/",
+        max_age=3600    # 1 hour
     )
-    print(f"DEBUG: Login successful for {username}. Cookie set (HttpOnly).")
+    print(f"DEBUG: Login status 302. Set-Cookie: access_token={auth.mask_value(access_token)} Secure={is_prod}")
     return response
 
 # ... logout ...
@@ -85,6 +100,7 @@ async def get_current_user_from_cookie(request: Request, db: Session = Depends(d
     # 1. Try Cookie (Raw Token)
     token = request.cookies.get("access_token")
     if token:
+        print(f"DEBUG: Found access_token cookie: {auth.mask_value(token)}")
         # If inadvertently quoted
         token = token.strip('"')
         # If inadvertently has Bearer prefix
@@ -96,7 +112,9 @@ async def get_current_user_from_cookie(request: Request, db: Session = Depends(d
              print(f"DEBUG: Cookie Auth Success: {user.username}, Role: {user.role}")
              return user
         except Exception as e:
-             print(f"DEBUG: Cookie Token Invalid: {e}")
+             print(f"DEBUG: Cookie validation failed for {auth.mask_value(token)}: {e}")
+    else:
+        print("DEBUG: No access_token found in cookies")
     
     # 2. Try Header (Bearer Token)
     auth_header = request.headers.get("Authorization")

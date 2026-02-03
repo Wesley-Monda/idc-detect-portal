@@ -10,6 +10,20 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="IDC Detect Portal", debug=True)
 
+@app.on_event("startup")
+async def startup_event():
+    # Diagnostics for DB persistence on Vercel
+    from . import database, models
+    db = next(database.get_db())
+    try:
+        user_count = db.query(models.User).count()
+        print(f"STARTUP: Connected to DB. Active users: {user_count}")
+        # Note: In Vercel, /tmp is ephemeral and shared within a lambda instance but not across instances.
+    except Exception as e:
+        print(f"STARTUP: DB connection test FAILED: {e}")
+    finally:
+        db.close()
+
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
