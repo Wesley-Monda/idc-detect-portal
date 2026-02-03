@@ -1,7 +1,5 @@
 fastapi
 uvicorn
-torch
-torchvision
 sqlalchemy
 passlib[bcrypt]
 python-multipart
