@@ -17,3 +17,6 @@ debug_*.py
 idcdetect.db
 test_sample.png
 IDC_classification.ipynb
+.vercel
+.env*.local
+.vercelignore
