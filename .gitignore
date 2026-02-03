@@ -11,3 +11,9 @@ breast_idc_resnet50_best_state_dict.pth
 static/uploads/*
 .vercel/
 npm-debug.log
+IDC dataset/
+verify_*.py
+debug_*.py
+idcdetect.db
+test_sample.png
+IDC_classification.ipynb
